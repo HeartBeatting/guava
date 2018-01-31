@@ -14,26 +14,21 @@
 
 package com.google.common.base;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static java.util.concurrent.TimeUnit.DAYS;
-import static java.util.concurrent.TimeUnit.HOURS;
-import static java.util.concurrent.TimeUnit.MICROSECONDS;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
-
 import com.google.common.annotations.GwtCompatible;
 import com.google.common.annotations.GwtIncompatible;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.j2objc.annotations.J2ObjCIncompatible;
+
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
+import static java.util.concurrent.TimeUnit.*;
+
 /**
  * An object that measures elapsed time in nanoseconds. It is useful to measure elapsed time using
- * this class instead of direct calls to {@link System#nanoTime} for a few reasons:
+ * this class instead of direct calls to {@link System#nanoTime} for a few reasons:                   // 替换使用System#nanoTime
  *
  * <ul>
  *   <li>An alternate time source can be substituted, for testing or performance reasons.
@@ -91,8 +86,8 @@ public final class Stopwatch {
    *
    * @since 15.0
    */
-  public static Stopwatch createUnstarted() {
-    return new Stopwatch();
+  public static Stopwatch createUnstarted() {   // 这里也是将构造器影藏,自定义一个方法,强调下方法的特殊性!我们使用的时候也应该这样,
+    return new Stopwatch();                     // 这样使用者就不会当成一个普通的构造方法对待.
   }
 
   /**

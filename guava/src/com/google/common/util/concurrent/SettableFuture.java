@@ -37,7 +37,7 @@ import javax.annotation.Nullable;
 public final class SettableFuture<V> extends AbstractFuture.TrustedFuture<V> {
   /**
    * Creates a new {@code SettableFuture} that can be completed or cancelled by a later method call.
-   */
+   */ // 这是一种特殊用途的对象,类中没有暴露构造方法,使用一个create,可以提醒使用者注意和普通构造的对象区分.
   public static <V> SettableFuture<V> create() {
     return new SettableFuture<V>();
   }

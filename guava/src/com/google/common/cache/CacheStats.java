@@ -14,13 +14,14 @@
 
 package com.google.common.cache;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 import com.google.common.annotations.GwtCompatible;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
-import java.util.concurrent.Callable;
+
 import javax.annotation.Nullable;
+import java.util.concurrent.Callable;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * Statistics about the performance of a {@link Cache}. Instances of this class are immutable.
@@ -53,7 +54,7 @@ import javax.annotation.Nullable;
  * @since 10.0
  */
 @GwtCompatible
-public final class CacheStats {
+public final class CacheStats {         // 统计功能也是一个对象,面向对象编程.
   private final long hitCount;
   private final long missCount;
   private final long loadSuccessCount;

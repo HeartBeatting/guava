@@ -14,14 +14,15 @@
 
 package com.google.common.util.concurrent;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.google.common.annotations.GwtIncompatible;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.GuardedBy;
 import java.util.concurrent.Executor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.annotation.Nullable;
-import javax.annotation.concurrent.GuardedBy;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A support class for {@code ListenableFuture} implementations to manage their listeners. An
@@ -68,7 +69,7 @@ public final class ExecutionList {
   public void add(Runnable runnable, Executor executor) {
     // Fail fast on a null. We throw NPE here because the contract of Executor states that it throws
     // NPE on null listener, so we propagate that contract up into the add method as well.
-    checkNotNull(runnable, "Runnable was null.");
+    checkNotNull(runnable, "Runnable was null.");   // 方法开始的地方,判空快速失败.
     checkNotNull(executor, "Executor was null.");
 
     // Lock while we check state. We must maintain the lock while adding the new pair so that

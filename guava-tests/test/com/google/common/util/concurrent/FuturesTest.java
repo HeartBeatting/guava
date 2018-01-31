@@ -16,44 +16,6 @@
 
 package com.google.common.util.concurrent;
 
-import static com.google.common.base.Functions.constant;
-import static com.google.common.base.Functions.identity;
-import static com.google.common.base.Throwables.propagateIfInstanceOf;
-import static com.google.common.collect.Iterables.getOnlyElement;
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.intersection;
-import static com.google.common.truth.Truth.assertThat;
-import static com.google.common.truth.Truth.assertWithMessage;
-import static com.google.common.util.concurrent.Futures.allAsList;
-import static com.google.common.util.concurrent.Futures.catching;
-import static com.google.common.util.concurrent.Futures.catchingAsync;
-import static com.google.common.util.concurrent.Futures.dereference;
-import static com.google.common.util.concurrent.Futures.getDone;
-import static com.google.common.util.concurrent.Futures.immediateCancelledFuture;
-import static com.google.common.util.concurrent.Futures.immediateCheckedFuture;
-import static com.google.common.util.concurrent.Futures.immediateFailedCheckedFuture;
-import static com.google.common.util.concurrent.Futures.immediateFailedFuture;
-import static com.google.common.util.concurrent.Futures.immediateFuture;
-import static com.google.common.util.concurrent.Futures.inCompletionOrder;
-import static com.google.common.util.concurrent.Futures.lazyTransform;
-import static com.google.common.util.concurrent.Futures.makeChecked;
-import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
-import static com.google.common.util.concurrent.Futures.successfulAsList;
-import static com.google.common.util.concurrent.Futures.transform;
-import static com.google.common.util.concurrent.Futures.transformAsync;
-import static com.google.common.util.concurrent.Futures.whenAllComplete;
-import static com.google.common.util.concurrent.Futures.whenAllSucceed;
-import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
-import static com.google.common.util.concurrent.TestPlatform.clearInterrupt;
-import static com.google.common.util.concurrent.TestPlatform.getDoneFromTimeoutOverload;
-import static com.google.common.util.concurrent.Uninterruptibles.awaitUninterruptibly;
-import static com.google.common.util.concurrent.Uninterruptibles.getUninterruptibly;
-import static java.lang.Thread.currentThread;
-import static java.util.Arrays.asList;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
-
 import com.google.common.annotations.GwtCompatible;
 import com.google.common.annotations.GwtIncompatible;
 import com.google.common.base.Function;
@@ -66,27 +28,40 @@ import com.google.common.testing.ClassSanityTester;
 import com.google.common.testing.GcFinalization;
 import com.google.common.testing.TestLogHandler;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import junit.framework.AssertionFailedError;
+import junit.framework.TestCase;
+
+import javax.annotation.Nullable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-import javax.annotation.Nullable;
-import junit.framework.AssertionFailedError;
-import junit.framework.TestCase;
+
+import static com.google.common.base.Functions.constant;
+import static com.google.common.base.Functions.identity;
+import static com.google.common.base.Throwables.propagateIfInstanceOf;
+import static com.google.common.collect.Iterables.*;
+import static com.google.common.collect.Lists.*;
+import static com.google.common.collect.Sets.*;
+import static com.google.common.truth.Truth.assertThat;
+import static com.google.common.truth.Truth.assertWithMessage;
+import static com.google.common.util.concurrent.Futures.*;
+import static com.google.common.util.concurrent.Futures.transform;
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static com.google.common.util.concurrent.TestPlatform.clearInterrupt;
+import static com.google.common.util.concurrent.TestPlatform.getDoneFromTimeoutOverload;
+import static com.google.common.util.concurrent.Uninterruptibles.awaitUninterruptibly;
+import static com.google.common.util.concurrent.Uninterruptibles.getUninterruptibly;
+import static java.lang.Thread.currentThread;
+import static java.util.Arrays.asList;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 /**
  * Unit tests for {@link Futures}.

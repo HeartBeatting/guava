@@ -14,8 +14,6 @@
 
 package com.google.common.cache;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 import com.google.common.annotations.GwtIncompatible;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
@@ -24,21 +22,24 @@ import com.google.common.base.Splitter;
 import com.google.common.cache.LocalCache.Strength;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.Nullable;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 /**
- * A specification of a {@link CacheBuilder} configuration.
+ * A specification of a {@link CacheBuilder} configuration.                                         // 描述CacheBuilder的配置
  *
- * <p>{@code CacheBuilderSpec} supports parsing configuration off of a string, which makes it
- * especially useful for command-line configuration of a {@code CacheBuilder}.
+ * <p>{@code CacheBuilderSpec} supports parsing configuration off of a string, which makes it       // 支持用字符串解析配置
+ * especially useful for command-line configuration of a {@code CacheBuilder}.                      // 使根据命令行配置CacheBuilder更容易
  *
- * <p>The string syntax is a series of comma-separated keys or key-value pairs, each corresponding
- * to a {@code CacheBuilder} method.
+ * <p>The string syntax is a series of comma-separated keys or key-value pairs, each corresponding  // 字符串的语义是一系列的key-value键值对
+ * to a {@code CacheBuilder} method.                                                                // 每个都对应一个CacheBuilder方法
  * <ul>
- * <li>{@code concurrencyLevel=[integer]}: sets {@link CacheBuilder#concurrencyLevel}.
+ * <li>{@code concurrencyLevel=[integer]}: sets {@link CacheBuilder#concurrencyLevel}.              // 以下属性都是可以设置的属性.
  * <li>{@code initialCapacity=[integer]}: sets {@link CacheBuilder#initialCapacity}.
  * <li>{@code maximumSize=[long]}: sets {@link CacheBuilder#maximumSize}.
  * <li>{@code maximumWeight=[long]}: sets {@link CacheBuilder#maximumWeight}.
@@ -82,10 +83,10 @@ public final class CacheBuilderSpec {
   }
 
   /** Splits each key-value pair. */
-  private static final Splitter KEYS_SPLITTER = Splitter.on(',').trimResults();
+  private static final Splitter KEYS_SPLITTER = Splitter.on(',').trimResults();       // key分隔符
 
   /** Splits the key from the value. */
-  private static final Splitter KEY_VALUE_SPLITTER = Splitter.on('=').trimResults();
+  private static final Splitter KEY_VALUE_SPLITTER = Splitter.on('=').trimResults();  // value分隔符
 
   /** Map of names to ValueParser. */
   private static final ImmutableMap<String, ValueParser> VALUE_PARSERS =
@@ -183,7 +184,7 @@ public final class CacheBuilderSpec {
         case WEAK:
           builder.weakKeys();
           break;
-        default:
+        default:                  // default是其他情况,直接报错.都是采取快速失败的办法.
           throw new AssertionError();
       }
     }
@@ -235,7 +236,7 @@ public final class CacheBuilderSpec {
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(
+    return Objects.hashCode(    // 根据多个值获取一个hash值. HashCode方法重写了, 下面的equals方法也要重写的.
         initialCapacity,
         maximumSize,
         maximumWeight,
@@ -250,14 +251,14 @@ public final class CacheBuilderSpec {
 
   @Override
   public boolean equals(@Nullable Object obj) {
-    if (this == obj) {
+    if (this == obj) {                          // equals方法都是要写这两步的,同一个对象的比较可以加快速度!
       return true;
     }
     if (!(obj instanceof CacheBuilderSpec)) {
       return false;
     }
     CacheBuilderSpec that = (CacheBuilderSpec) obj;
-    return Objects.equal(initialCapacity, that.initialCapacity)
+    return Objects.equal(initialCapacity, that.initialCapacity)   // 上面参与HashCode的值都要进行equal比较! 一共10个.
         && Objects.equal(maximumSize, that.maximumSize)
         && Objects.equal(maximumWeight, that.maximumWeight)
         && Objects.equal(concurrencyLevel, that.concurrencyLevel)

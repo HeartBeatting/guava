@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 
 /**
- * A semi-persistent mapping from keys to values. Values are automatically loaded by the cache, and
+ * A semi-persistent mapping from keys to values. Values are automatically loaded by the cache, and   // 一个半静态的map, 用来映射keys-values
  * are stored in the cache until either evicted or manually invalidated. The common way to build
  * instances is using {@link CacheBuilder}.
  *

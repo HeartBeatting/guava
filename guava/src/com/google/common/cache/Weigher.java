@@ -17,7 +17,7 @@ package com.google.common.cache;
 import com.google.common.annotations.GwtCompatible;
 
 /**
- * Calculates the weights of cache entries.
+ * Calculates the weights of cache entries. // 用于计算entry的重量
  *
  * @author Charles Fry
  * @since 11.0

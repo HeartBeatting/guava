@@ -14,21 +14,14 @@
 
 package com.google.common.cache;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-
 import com.google.common.annotations.GwtCompatible;
 import com.google.common.annotations.GwtIncompatible;
-import com.google.common.base.Ascii;
-import com.google.common.base.Equivalence;
-import com.google.common.base.MoreObjects;
-import com.google.common.base.Supplier;
-import com.google.common.base.Suppliers;
-import com.google.common.base.Ticker;
+import com.google.common.base.*;
 import com.google.common.cache.AbstractCache.SimpleStatsCounter;
 import com.google.common.cache.AbstractCache.StatsCounter;
 import com.google.common.cache.LocalCache.Strength;
+
+import javax.annotation.CheckReturnValue;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.util.ConcurrentModificationException;
@@ -36,7 +29,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.annotation.CheckReturnValue;
+
+import static com.google.common.base.Preconditions.*;
 
 /**
  * <p>A builder of {@link LoadingCache} and {@link Cache} instances having any combination of the
@@ -143,7 +137,7 @@ import javax.annotation.CheckReturnValue;
  * @since 10.0
  */
 @GwtCompatible(emulated = true)
-public final class CacheBuilder<K, V> {
+public final class CacheBuilder<K, V> {   // 其实guava的这个cache虽然是个cache,但是保证了线程安全.其实用缓存最难的是保证缓存一致性.
   private static final int DEFAULT_INITIAL_CAPACITY = 16;
   private static final int DEFAULT_CONCURRENCY_LEVEL = 4;
   private static final int DEFAULT_EXPIRATION_NANOS = 0;
@@ -208,11 +202,11 @@ public final class CacheBuilder<K, V> {
 
   private static final Logger logger = Logger.getLogger(CacheBuilder.class.getName());
 
-  static final int UNSET_INT = -1;
+  static final int UNSET_INT = -1;        // 这是一个蛮好的办法, 不把null当成初始值, null很多时候有很多歧义.
 
   boolean strictParsing = true;
 
-  int initialCapacity = UNSET_INT;
+  int initialCapacity = UNSET_INT;        // 将-1作为初始值UNSET_INT
   int concurrencyLevel = UNSET_INT;
   long maximumSize = UNSET_INT;
   long maximumWeight = UNSET_INT;
@@ -240,7 +234,7 @@ public final class CacheBuilder<K, V> {
    * Constructs a new {@code CacheBuilder} instance with default settings, including strong keys,
    * strong values, and no automatic eviction of any kind.
    */
-  public static CacheBuilder<Object, Object> newBuilder() {
+  public static CacheBuilder<Object, Object> newBuilder() {   // 这是一种构造者模式,适用于创建一个对象有很多可选参数的情况下,帮助更好的创建对象.
     return new CacheBuilder<Object, Object>();
   }
 
@@ -250,7 +244,7 @@ public final class CacheBuilder<K, V> {
    * @since 12.0
    */
   @GwtIncompatible // To be supported
-  public static CacheBuilder<Object, Object> from(CacheBuilderSpec spec) {
+  public static CacheBuilder<Object, Object> from(CacheBuilderSpec spec) {    // 根据缓存描述信息CacheBuilderSpec,创建CacheBuilder
     return spec.toCacheBuilder().lenientParsing();
   }
 
@@ -263,11 +257,11 @@ public final class CacheBuilder<K, V> {
    */
   @GwtIncompatible // To be supported
   public static CacheBuilder<Object, Object> from(String spec) {
-    return from(CacheBuilderSpec.parse(spec));
+    return from(CacheBuilderSpec.parse(spec));    // 调用的就是上面的from方法
   }
 
   /**
-   * Enables lenient parsing. Useful for tests and spec parsing.
+   * Enables lenient parsing. Useful for tests and spec parsing.  // 激活宽松的解析, 在测试类和描述解析中比较有用
    *
    * @return this {@code CacheBuilder} instance (for chaining)
    */
@@ -293,7 +287,7 @@ public final class CacheBuilder<K, V> {
   }
 
   Equivalence<Object> getKeyEquivalence() {
-    return MoreObjects.firstNonNull(keyEquivalence, getKeyStrength().defaultEquivalence());
+    return MoreObjects.firstNonNull(keyEquivalence, getKeyStrength().defaultEquivalence());   // 返回第一个非空的,MoreObjects这个工具类蛮好用的.
   }
 
   /**
@@ -309,7 +303,7 @@ public final class CacheBuilder<K, V> {
   CacheBuilder<K, V> valueEquivalence(Equivalence<Object> equivalence) {
     checkState(
         valueEquivalence == null, "value equivalence was already set to %s", valueEquivalence);
-    this.valueEquivalence = checkNotNull(equivalence);
+    this.valueEquivalence = checkNotNull(equivalence);    // 这个校验方法也蛮好用的,不能接受null的地方立马抛出异常,这样问题能最早被发现! 这种习惯很好.
     return this;
   }
 
@@ -319,9 +313,9 @@ public final class CacheBuilder<K, V> {
 
   /**
    * Sets the minimum total size for the internal hash tables. For example, if the initial capacity
-   * is {@code 60}, and the concurrency level is {@code 8}, then eight segments are created, each
-   * having a hash table of size eight. Providing a large enough estimate at construction time
-   * avoids the need for expensive resizing operations later, but setting this value unnecessarily
+   * is {@code 60}, and the concurrency level is {@code 8}, then eight segments are created, each   // segments数量是 容量 除 并发级别数
+   * having a hash table of size eight. Providing a large enough estimate at construction time      // 设置足够大,可以避免扩容
+   * avoids the need for expensive resizing operations later, but setting this value unnecessarily  // 但是设置太高,浪费内存空间
    * high wastes memory.
    *
    * @return this {@code CacheBuilder} instance (for chaining)
@@ -344,8 +338,8 @@ public final class CacheBuilder<K, V> {
 
   /**
    * Guides the allowed concurrency among update operations. Used as a hint for internal sizing. The
-   * table is internally partitioned to try to permit the indicated number of concurrent updates
-   * without contention. Because assignment of entries to these partitions is not necessarily
+   * table is internally partitioned to try to permit the indicated number of concurrent updates      // HashTable内部被切分了,允许指定的并发线程数
+   * without contention. Because assignment of entries to these partitions is not necessarily         // 无竞争的并发修改
    * uniform, the actual concurrency observed may vary. Ideally, you should choose a value to
    * accommodate as many threads as will ever concurrently modify the table. Using a significantly
    * higher value than you need can waste space and time, and a significantly lower value can lead
@@ -390,13 +384,13 @@ public final class CacheBuilder<K, V> {
   /**
    * Specifies the maximum number of entries the cache may contain.
    *
-   * <p>Note that the cache <b>may evict an entry before this limit is exceeded</b>. For example, in
+   * <p>Note that the cache <b>may evict an entry before this limit is exceeded</b>. For example, in  // 在超过上限之前就可能清理缓存了
    * the current implementation, when {@code concurrencyLevel} is greater than {@code 1}, each
    * resulting segment inside the cache <i>independently</i> limits its own size to approximately
    * {@code maximumSize / concurrencyLevel}.
    *
-   * <p>When eviction is necessary, the cache evicts entries that are less likely to be used again.
-   * For example, the cache may evict an entry because it hasn't been used recently or very often.
+   * <p>When eviction is necessary, the cache evicts entries that are less likely to be used again.   // 清理不太可能再次被使用的entry
+   * For example, the cache may evict an entry because it hasn't been used recently or very often.    // 清理没用过或者最近不常使用的
    *
    * <p>If {@code maximumSize} is zero, elements will be evicted immediately after being loaded into
    * cache. This can be useful in testing, or to disable caching temporarily.
@@ -410,8 +404,8 @@ public final class CacheBuilder<K, V> {
    */
   public CacheBuilder<K, V> maximumSize(long maximumSize) {
     checkState(
-        this.maximumSize == UNSET_INT, "maximum size was already set to %s", this.maximumSize);
-    checkState(
+        this.maximumSize == UNSET_INT, "maximum size was already set to %s", this.maximumSize);   // 构造函数中,开始也是各种校验,最早发现异常问题.
+    checkState(                                                                                                       // google开发者的开发习惯规范也是值得学习的.
         this.maximumWeight == UNSET_INT,
         "maximum weight was already set to %s",
         this.maximumWeight);
@@ -422,12 +416,12 @@ public final class CacheBuilder<K, V> {
   }
 
   /**
-   * Specifies the maximum weight of entries the cache may contain. Weight is determined using the
+   * Specifies the maximum weight of entries the cache may contain. Weight is determined using the    // 最大重量
    * {@link Weigher} specified with {@link #weigher}, and use of this method requires a
    * corresponding call to {@link #weigher} prior to calling {@link #build}.
    *
-   * <p>Note that the cache <b>may evict an entry before this limit is exceeded</b>. For example, in
-   * the current implementation, when {@code concurrencyLevel} is greater than {@code 1}, each
+   * <p>Note that the cache <b>may evict an entry before this limit is exceeded</b>. For example, in  // 可能在重量达到上限之前就清理cache了
+   * the current implementation, when {@code concurrencyLevel} is greater than {@code 1}, each        // 每个segment都会限制小于 maximumWeight / concurrencyLevel
    * resulting segment inside the cache <i>independently</i> limits its own weight to approximately
    * {@code maximumWeight / concurrencyLevel}.
    *
@@ -437,7 +431,7 @@ public final class CacheBuilder<K, V> {
    * <p>If {@code maximumWeight} is zero, elements will be evicted immediately after being loaded
    * into cache. This can be useful in testing, or to disable caching temporarily.
    *
-   * <p>Note that weight is only used to determine whether the cache is over capacity; it has no
+   * <p>Note that weight is only used to determine whether the cache is over capacity; it has no      // 这个参数仅仅用于判断cache是否达到上限了
    * effect on selecting which entry should be evicted next.
    *
    * <p>This feature cannot be used in conjunction with {@link #maximumSize}.
@@ -448,7 +442,7 @@ public final class CacheBuilder<K, V> {
    * @throws IllegalStateException if a maximum weight or size was already set
    * @since 11.0
    */
-  @GwtIncompatible // To be supported
+  @GwtIncompatible // To be supported // 这个仅仅是不支持GWT,对java开发的正常使用没有影响
   public CacheBuilder<K, V> maximumWeight(long maximumWeight) {
     checkState(
         this.maximumWeight == UNSET_INT,
@@ -468,8 +462,8 @@ public final class CacheBuilder<K, V> {
    * {@link #build}. Weights are measured and recorded when entries are inserted into the cache, and
    * are thus effectively static during the lifetime of a cache entry.
    *
-   * <p>When the weight of an entry is zero it will not be considered for size-based eviction
-   * (though it still may be evicted by other means).
+   * <p>When the weight of an entry is zero it will not be considered for size-based eviction       // entry的weight被设置为0, 按照大小进行清理就不会考虑
+   * (though it still may be evicted by other means).                                               // 可能会被其他策略清理.
    *
    * <p><b>Important note:</b> Instead of returning <em>this</em> as a {@code CacheBuilder}
    * instance, this method returns {@code CacheBuilder<K1, V1>}. From this point on, either the
@@ -503,7 +497,7 @@ public final class CacheBuilder<K, V> {
 
     // safely limiting the kinds of caches this can produce
     @SuppressWarnings("unchecked")
-    CacheBuilder<K1, V1> me = (CacheBuilder<K1, V1>) this;
+    CacheBuilder<K1, V1> me = (CacheBuilder<K1, V1>) this;  // 这里有个强转
     me.weigher = checkNotNull(weigher);
     return me;
   }
@@ -522,25 +516,25 @@ public final class CacheBuilder<K, V> {
   }
 
   /**
-   * Specifies that each key (not value) stored in the cache should be wrapped in a
-   * {@link WeakReference} (by default, strong references are used).
+   * Specifies that each key (not value) stored in the cache should be wrapped in a   // key应该被弱引用对象包裹
+   * {@link WeakReference} (by default, strong references are used).                  // 默认是强引用
    *
-   * <p><b>Warning:</b> when this method is used, the resulting cache will use identity ({@code ==})
+   * <p><b>Warning:</b> when this method is used, the resulting cache will use identity ({@code ==})  // 用等号判断key是否相等
    * comparison to determine equality of keys.
    *
-   * <p>Entries with keys that have been garbage collected may be counted in {@link Cache#size}, but
-   * will never be visible to read or write operations; such entries are cleaned up as part of the
-   * routine maintenance described in the class javadoc.
-   *
+   * <p>Entries with keys that have been garbage collected may be counted in {@link Cache#size}, but  // Cache.size可能会计数到已被回收的key
+   * will never be visible to read or write operations; such entries are cleaned up as part of the    // 但是对读和写操作不可见
+   * routine maintenance described in the class javadoc.                                              // 这种entry在日常维护中被清理出去,有点类似ThreadLocal
+   *                                                                                                  // guava的这个缓存感觉是ConcurrentHashMap和ThreadLocal的结合体
    * @return this {@code CacheBuilder} instance (for chaining)
    * @throws IllegalStateException if the key strength was already set
    */
   @GwtIncompatible // java.lang.ref.WeakReference
-  public CacheBuilder<K, V> weakKeys() {
+  public CacheBuilder<K, V> weakKeys() {    // 设置key为弱引用.
     return setKeyStrength(Strength.WEAK);
   }
 
-  CacheBuilder<K, V> setKeyStrength(Strength strength) {
+  CacheBuilder<K, V> setKeyStrength(Strength strength) {  // 和上面方法类似,都是设置key引用的强弱类型的.
     checkState(keyStrength == null, "Key strength was already set to %s", keyStrength);
     keyStrength = checkNotNull(strength);
     return this;
@@ -554,8 +548,8 @@ public final class CacheBuilder<K, V> {
    * Specifies that each value (not key) stored in the cache should be wrapped in a
    * {@link WeakReference} (by default, strong references are used).
    *
-   * <p>Weak values will be garbage collected once they are weakly reachable. This makes them a poor
-   * candidate for caching; consider {@link #softValues} instead.
+   * <p>Weak values will be garbage collected once they are weakly reachable. This makes them a poor  // 弱引用在gc时会被自动回收,所以缓存最好使用软引用
+   * candidate for caching; consider {@link #softValues} instead.                                     // 软引用是在内存不够时才会被回收
    *
    * <p><b>Note:</b> when this method is used, the resulting cache will use identity ({@code ==})
    * comparison to determine equality of values.
@@ -574,13 +568,13 @@ public final class CacheBuilder<K, V> {
 
   /**
    * Specifies that each value (not key) stored in the cache should be wrapped in a
-   * {@link SoftReference} (by default, strong references are used). Softly-referenced objects will
+   * {@link SoftReference} (by default, strong references are used). Softly-referenced objects will // 软引用的对象会以最近最少使用原则,被gc回收.
    * be garbage-collected in a <i>globally</i> least-recently-used manner, in response to memory
    * demand.
    *
-   * <p><b>Warning:</b> in most circumstances it is better to set a per-cache
+   * <p><b>Warning:</b> in most circumstances it is better to set a per-cache                       // 在大多数场景下,建议设置maximumSize,而不是使用软引用
    * {@linkplain #maximumSize(long) maximum size} instead of using soft references. You should only
-   * use this method if you are well familiar with the practical consequences of soft references.
+   * use this method if you are well familiar with the practical consequences of soft references.   // 你对软引用的实际后果很清楚的情况下,你才应该使用
    *
    * <p><b>Note:</b> when this method is used, the resulting cache will use identity ({@code ==})
    * comparison to determine equality of values.
@@ -597,19 +591,19 @@ public final class CacheBuilder<K, V> {
     return setValueStrength(Strength.SOFT);
   }
 
-  CacheBuilder<K, V> setValueStrength(Strength strength) {
+  CacheBuilder<K, V> setValueStrength(Strength strength) {  // 这个和下一个方法都是内部使用的
     checkState(valueStrength == null, "Value strength was already set to %s", valueStrength);
     valueStrength = checkNotNull(strength);
     return this;
   }
 
   Strength getValueStrength() {
-    return MoreObjects.firstNonNull(valueStrength, Strength.STRONG);
+    return MoreObjects.firstNonNull(valueStrength, Strength.STRONG);  // 默认为STRONG
   }
 
   /**
    * Specifies that each entry should be automatically removed from the cache once a fixed duration
-   * has elapsed after the entry's creation, or the most recent replacement of its value.
+   * has elapsed after the entry's creation, or the most recent replacement of its value.           // 在最近一次创建或写入之后,超过指定的时间,需要被自动清理
    *
    * <p>When {@code duration} is zero, this method hands off to {@link #maximumSize(long)
    * maximumSize}{@code (0)}, ignoring any otherwise-specified maximum size or weight. This can be
@@ -643,8 +637,8 @@ public final class CacheBuilder<K, V> {
   /**
    * Specifies that each entry should be automatically removed from the cache once a fixed duration
    * has elapsed after the entry's creation, the most recent replacement of its value, or its last
-   * access. Access time is reset by all cache read and write operations (including
-   * {@code Cache.asMap().get(Object)} and {@code Cache.asMap().put(K, V)}), but not by operations
+   * access. Access time is reset by all cache read and write operations (including                 // 所有的读写操作都会重置时间
+   * {@code Cache.asMap().get(Object)} and {@code Cache.asMap().put(K, V)}), but not by operations  // 包括了Cache.asMap().get(Object)
    * on the collection-views of {@link Cache#asMap}.
    *
    * <p>When {@code duration} is zero, this method hands off to {@link #maximumSize(long)
@@ -680,21 +674,21 @@ public final class CacheBuilder<K, V> {
 
   /**
    * Specifies that active entries are eligible for automatic refresh once a fixed duration has
-   * elapsed after the entry's creation, or the most recent replacement of its value. The semantics
+   * elapsed after the entry's creation, or the most recent replacement of its value. The semantics // 在创建或者最近一次修改后,会定时刷新数据.
    * of refreshes are specified in {@link LoadingCache#refresh}, and are performed by calling
    * {@link CacheLoader#reload}.
    *
-   * <p>As the default implementation of {@link CacheLoader#reload} is synchronous, it is
-   * recommended that users of this method override {@link CacheLoader#reload} with an asynchronous
-   * implementation; otherwise refreshes will be performed during unrelated cache read and write
+   * <p>As the default implementation of {@link CacheLoader#reload} is synchronous, it is           // 因为reload默认是同步操作
+   * recommended that users of this method override {@link CacheLoader#reload} with an asynchronous // 建议开发者覆写reload方法,使用异步实现
+   * implementation; otherwise refreshes will be performed during unrelated cache read and write    // 否则refresh会在不相关的缓存中读和写.
    * operations.
    *
-   * <p>Currently automatic refreshes are performed when the first stale request for an entry
-   * occurs. The request triggering refresh will make a blocking call to {@link CacheLoader#reload}
-   * and immediately return the new value if the returned future is complete, and the old value
+   * <p>Currently automatic refreshes are performed when the first stale request for an entry       // 目前自动刷新是在过期后的第一次访问时刷新的
+   * occurs. The request triggering refresh will make a blocking call to {@link CacheLoader#reload} // 请求会同步阻塞调用reload方法
+   * and immediately return the new value if the returned future is complete, and the old value     // 如果返回的future完成了就返回新的,否则就返回老的值
    * otherwise.
    *
-   * <p><b>Note:</b> <i>all exceptions thrown during refresh will be logged and then swallowed</i>.
+   * <p><b>Note:</b> <i>all exceptions thrown during refresh will be logged and then swallowed</i>. // refresh的异常会被记录,然后被吞掉
    *
    * @param duration the length of time after an entry is created that it should be considered
    *     stale, and thus eligible for refresh
@@ -721,7 +715,7 @@ public final class CacheBuilder<K, V> {
    * Specifies a nanosecond-precision time source for this cache. By default,
    * {@link System#nanoTime} is used.
    *
-   * <p>The primary intent of this method is to facilitate testing of caches with a fake or mock
+   * <p>The primary intent of this method is to facilitate testing of caches with a fake or mock  // 这个主要用于测试的
    * time source.
    *
    * @return this {@code CacheBuilder} instance (for chaining)
@@ -783,7 +777,7 @@ public final class CacheBuilder<K, V> {
   /**
    * Enable the accumulation of {@link CacheStats} during the operation of the cache. Without this
    * {@link Cache#stats} will return zero for all statistics. Note that recording stats requires
-   * bookkeeping to be performed with each operation, and thus imposes a performance penalty on
+   * bookkeeping to be performed with each operation, and thus imposes a performance penalty on   // 对缓存操作有性能损失.
    * cache operation.
    *
    * @return this {@code CacheBuilder} instance (for chaining)
@@ -803,10 +797,10 @@ public final class CacheBuilder<K, V> {
   }
 
   /**
-   * Builds a cache, which either returns an already-loaded value for a given key or atomically
-   * computes or retrieves it using the supplied {@code CacheLoader}. If another thread is currently
-   * loading the value for this key, simply waits for that thread to finish and returns its loaded
-   * value. Note that multiple threads can concurrently load values for distinct keys.
+   * Builds a cache, which either returns an already-loaded value for a given key or atomically       // 返回key对应的已缓存的value或者自动计算
+   * computes or retrieves it using the supplied {@code CacheLoader}. If another thread is currently  // 或者使用指定的CacheLoader加载数据
+   * loading the value for this key, simply waits for that thread to finish and returns its loaded    // 如果另一个线程正在为这个key加载数据,就是简单的等到那个线程完成,然后返回它加载的数据
+   * value. Note that multiple threads can concurrently load values for distinct keys.                // 多个线程可以并发的加载不同key的value
    *
    * <p>This method does not alter the state of this {@code CacheBuilder} instance, so it can be
    * invoked again to create multiple independent caches.
@@ -814,20 +808,20 @@ public final class CacheBuilder<K, V> {
    * @param loader the cache loader used to obtain new values
    * @return a cache having the requested features
    */
-  public <K1 extends K, V1 extends V> LoadingCache<K1, V1> build(
-      CacheLoader<? super K1, V1> loader) {
+  public <K1 extends K, V1 extends V> LoadingCache<K1, V1> build(         // build都是创建一个全新的对象返回
+      CacheLoader<? super K1, V1> loader) {                               // 这里可以指定loader
     checkWeightWithWeigher();
-    return new LocalCache.LocalLoadingCache<K1, V1>(this, loader);
+    return new LocalCache.LocalLoadingCache<K1, V1>(this, loader);  // 创建一个LocalCache.LocalLoadingCache
   }
 
   /**
-   * Builds a cache which does not automatically load values when keys are requested.
+   * Builds a cache which does not automatically load values when keys are requested.     // 这个缓存,不会根据key自动加载数据
    *
-   * <p>Consider {@link #build(CacheLoader)} instead, if it is feasible to implement a
+   * <p>Consider {@link #build(CacheLoader)} instead, if it is feasible to implement a    // 如果需要自动加载数据到缓存,使用另一个方法
    * {@code CacheLoader}.
    *
-   * <p>This method does not alter the state of this {@code CacheBuilder} instance, so it can be
-   * invoked again to create multiple independent caches.
+   * <p>This method does not alter the state of this {@code CacheBuilder} instance, so it can be  // 这个方法不会修改CacheBuilder实例
+   * invoked again to create multiple independent caches.                                 // 所以可以再次调用方法, 创建多个独立的缓存实例.
    *
    * @return a cache having the requested features
    * @since 11.0

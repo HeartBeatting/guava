@@ -16,41 +16,35 @@
 
 package com.google.common.cache;
 
+import com.google.common.annotations.GwtCompatible;
+import com.google.common.annotations.GwtIncompatible;
+import com.google.common.base.Ticker;
+import com.google.common.cache.TestingRemovalListeners.*;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import com.google.common.testing.NullPointerTester;
+import junit.framework.TestCase;
+
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static com.google.common.cache.TestingCacheLoaders.constantLoader;
 import static com.google.common.cache.TestingCacheLoaders.identityLoader;
-import static com.google.common.cache.TestingRemovalListeners.countingRemovalListener;
-import static com.google.common.cache.TestingRemovalListeners.nullRemovalListener;
-import static com.google.common.cache.TestingRemovalListeners.queuingRemovalListener;
+import static com.google.common.cache.TestingRemovalListeners.*;
 import static com.google.common.cache.TestingWeighers.constantWeigher;
 import static com.google.common.truth.Truth.assertThat;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import com.google.common.annotations.GwtCompatible;
-import com.google.common.annotations.GwtIncompatible;
-import com.google.common.base.Ticker;
-import com.google.common.cache.TestingRemovalListeners.CountingRemovalListener;
-import com.google.common.cache.TestingRemovalListeners.QueuingRemovalListener;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.google.common.testing.NullPointerTester;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import junit.framework.TestCase;
-
 /**
- * Unit tests for CacheBuilder.
+ * Unit tests for CacheBuilder.                   // 测试CacheBuilder
  */
 @GwtCompatible(emulated = true)
-public class CacheBuilderTest extends TestCase {
+public class CacheBuilderTest extends TestCase {  // 老版的junit测试类
 
   public void testNewBuilder() {
     CacheLoader<Object, Integer> loader = constantLoader(1);
