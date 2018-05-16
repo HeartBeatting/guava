@@ -14,12 +14,13 @@
 
 package com.google.common.eventbus;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.google.common.collect.Queues;
+
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Handler for dispatching events to subscribers, providing different event ordering guarantees that
@@ -39,12 +40,12 @@ abstract class Dispatcher {
    * all subscribers in the order they are posted.
    *
    * <p>When all subscribers are dispatched to using a <i>direct</i> executor (which dispatches on
-   * the same thread that posts the event), this yields a breadth-first dispatch order on each
+   * the same thread that posts the event), this yields a breadth-first dispatch order on each      // 广度优先分派顺序
    * thread. That is, all subscribers to a single event A will be called before any subscribers to
    * any events B and C that are posted to the event bus by the subscribers to A.
    */
   static Dispatcher perThreadDispatchQueue() {
-    return new PerThreadQueuedDispatcher();
+    return new PerThreadQueuedDispatcher();   // 内部是每个线程都有一个队列的
   }
 
   /**
@@ -60,10 +61,10 @@ abstract class Dispatcher {
   /**
    * Returns a dispatcher that dispatches events to subscribers immediately as they're posted
    * without using an intermediate queue to change the dispatch order. This is effectively a
-   * depth-first dispatch order, vs. breadth-first when using a queue.
+   * depth-first dispatch order, vs. breadth-first when using a queue.  // 深度优先顺序
    */
   static Dispatcher immediate() {
-    return ImmediateDispatcher.INSTANCE;
+    return ImmediateDispatcher.INSTANCE;  // 立即分派,没有队列作缓冲的.
   }
 
   /**
@@ -85,14 +86,14 @@ abstract class Dispatcher {
         new ThreadLocal<Queue<Event>>() {
           @Override
           protected Queue<Event> initialValue() {
-            return Queues.newArrayDeque();
+            return Queues.newArrayDeque();        // 每个线程都有自己的线程本地队列
           }
         };
 
     /**
-     * Per-thread dispatch state, used to avoid reentrant event dispatching.
+     * Per-thread dispatch state, used to avoid reentrant event dispatching.  // 避免重入的分发
      */
-    private final ThreadLocal<Boolean> dispatching =
+    private final ThreadLocal<Boolean> dispatching =    // 这里和当时我用来做去重的思路是一致的,都是利用一个ThreadLocal标记
         new ThreadLocal<Boolean>() {
           @Override
           protected Boolean initialValue() {
@@ -104,26 +105,26 @@ abstract class Dispatcher {
     void dispatch(Object event, Iterator<Subscriber> subscribers) {
       checkNotNull(event);
       checkNotNull(subscribers);
-      Queue<Event> queueForThread = queue.get();
-      queueForThread.offer(new Event(event, subscribers));
+      Queue<Event> queueForThread = queue.get();            // 这是线程本地队列,所以是线程安全的.
+      queueForThread.offer(new Event(event, subscribers));  // offer方法添加到队列中.
 
-      if (!dispatching.get()) {
-        dispatching.set(true);
-        try {
+      if (!dispatching.get()) {   // 判断没有发送.
+        dispatching.set(true);    // 设置在发送中,dispatching也是线程安全的. 这里的get和set会不会有线程安全问题?
+        try {                     // 不会,因为都是线程本地变量,同一时间只会有一个线程访问. 这种控制就是防止重复通知的.
           Event nextEvent;
-          while ((nextEvent = queueForThread.poll()) != null) {
-            while (nextEvent.subscribers.hasNext()) {
-              nextEvent.subscribers.next().dispatchEvent(nextEvent.event);
+          while ((nextEvent = queueForThread.poll()) != null) {           // 每次从队列中取一个,直到没有可取的.
+            while (nextEvent.subscribers.hasNext()) {                     // 遍历所有的监听者,逐个通知
+              nextEvent.subscribers.next().dispatchEvent(nextEvent.event);  // 因为这里的dispatchEvent方法可能是异步的,所以上面先保存到一个队列中.
             }
           }
         } finally {
-          dispatching.remove();
-          queue.remove();
+          dispatching.remove();   // 完成后删除标记
+          queue.remove();         // 删除线程本地队列
         }
       }
     }
 
-    private static final class Event {
+    private static final class Event {    // Event对象是对event属性的包装对象.
       private final Object event;
       private final Iterator<Subscriber> subscribers;
 
@@ -167,11 +168,11 @@ abstract class Dispatcher {
     void dispatch(Object event, Iterator<Subscriber> subscribers) {
       checkNotNull(event);
       while (subscribers.hasNext()) {
-        queue.add(new EventWithSubscriber(event, subscribers.next()));
+        queue.add(new EventWithSubscriber(event, subscribers.next()));  // 这种先add进queue队列
       }
 
       EventWithSubscriber e;
-      while ((e = queue.poll()) != null) {
+      while ((e = queue.poll()) != null) {    // 在调用poll方法,从队列中取有什么意思?
         e.subscriber.dispatchEvent(e.event);
       }
     }
@@ -194,10 +195,10 @@ abstract class Dispatcher {
     private static final ImmediateDispatcher INSTANCE = new ImmediateDispatcher();
 
     @Override
-    void dispatch(Object event, Iterator<Subscriber> subscribers) {
+    void dispatch(Object event, Iterator<Subscriber> subscribers) {   // 这个其实就是靠客户端线程, 同步的遍历调用监听者.
       checkNotNull(event);
       while (subscribers.hasNext()) {
-        subscribers.next().dispatchEvent(event);
+        subscribers.next().dispatchEvent(event);  // 每个Dispatcher内部还是依赖executor执行注册者的监听方法
       }
     }
   }

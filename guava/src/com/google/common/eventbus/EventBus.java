@@ -14,11 +14,10 @@
 
 package com.google.common.eventbus;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.google.common.annotations.Beta;
 import com.google.common.base.MoreObjects;
 import com.google.common.util.concurrent.MoreExecutors;
+
 import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.Locale;
@@ -26,48 +25,50 @@ import java.util.concurrent.Executor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 /**
  * Dispatches events to listeners, and provides ways for listeners to register themselves.
  *
- * <p>The EventBus allows publish-subscribe-style communication between components without requiring
- * the components to explicitly register with one another (and thus be aware of each other). It is
- * designed exclusively to replace traditional Java in-process event distribution using explicit
- * registration. It is <em>not</em> a general-purpose publish-subscribe system, nor is it intended
+ * <p>The EventBus allows publish-subscribe-style communication between components without requiring  // EventBus允许多个组件之间发布注册模式的通讯
+ * the components to explicitly register with one another (and thus be aware of each other). It is    // 不需要组件显示的注册到另一个组件上, (彼此知道双方的存在)
+ * designed exclusively to replace traditional Java in-process event distribution using explicit      // 他被设计专门用于替换 传统的 java 执行中时间分派, 使用显示的注册
+ * registration. It is <em>not</em> a general-purpose publish-subscribe system, nor is it intended    // 它不是一个发布注册系统, 也不打断用于内部的通讯
  * for interprocess communication.
  *
  * <h2>Receiving Events</h2>
  *
  * <p>To receive events, an object should:
  * <ol>
- * <li>Expose a public method, known as the <i>event subscriber</i>, which accepts a single argument
+ * <li>Expose a public method, known as the <i>event subscriber</i>, which accepts a single argument  // 1. 必须只有一个入参
  *     of the type of event desired;
- * <li>Mark it with a {@link Subscribe} annotation;
- * <li>Pass itself to an EventBus instance's {@link #register(Object)} method.
+ * <li>Mark it with a {@link Subscribe} annotation;                                                   // 2. 打上Subscribe注解, 这个注解只能在方法上.
+ * <li>Pass itself to an EventBus instance's {@link #register(Object)} method.                        // 3. 使用EventBus实例的register方法, 将事件接收对象注册进去
  * </ol>
  *
  * <h2>Posting Events</h2>
  *
- * <p>To post an event, simply provide the event object to the {@link #post(Object)} method. The
- * EventBus instance will determine the type of event and route it to all registered listeners.
+ * <p>To post an event, simply provide the event object to the {@link #post(Object)} method. The      // 发送事件, 只要简单的调用post方法
+ * EventBus instance will determine the type of event and route it to all registered listeners.       // EventBus实例会确定事件类型, 路由到所有的注册监听器
  *
  * <p>Events are routed based on their type &mdash; an event will be delivered to any subscriber for
- * any type to which the event is <em>assignable.</em> This includes implemented interfaces, all
+ * any type to which the event is <em>assignable.</em> This includes implemented interfaces, all      // 包括实现了接口,所有的子类,和所有由超类实现的接口
  * superclasses, and all interfaces implemented by superclasses.
  *
- * <p>When {@code post} is called, all registered subscribers for an event are run in sequence, so
- * subscribers should be reasonably quick. If an event may trigger an extended process (such as a
- * database load), spawn a thread or queue it for later. (For a convenient way to do this, use an
- * {@link AsyncEventBus}.)
+ * <p>When {@code post} is called, all registered subscribers for an event are run in sequence, so    // post方法调用了,所有注册的订阅者,按顺序执行
+ * subscribers should be reasonably quick. If an event may trigger an extended process (such as a     // 所以注册者必须相对要快点. 如果一个时间可能触发扩展的进程,比如查询数据库
+ * database load), spawn a thread or queue it for later. (For a convenient way to do this, use an     // 请另起一个线程或者加入到队列中稍后执行.
+ * {@link AsyncEventBus}.)                                                                            // 更方便的方式是使用异步事件总线: AsyncEventBus.
  *
  * <h2>Subscriber Methods</h2>
  *
- * <p>Event subscriber methods must accept only one argument: the event.
+ * <p>Event subscriber methods must accept only one argument: the event.                              // 每个方法必须只有一个入参: 事件对象.
  *
- * <p>Subscribers should not, in general, throw. If they do, the EventBus will catch and log the
- * exception. This is rarely the right solution for error handling and should not be relied upon; it
- * is intended solely to help find problems during development.
+ * <p>Subscribers should not, in general, throw. If they do, the EventBus will catch and log the      // 订阅者一般不应该抛出异常. 如果抛出了,EventBus会catch异常,打印异常
+ * exception. This is rarely the right solution for error handling and should not be relied upon; it  // 这一般不是正确的处理方法, 用于处理报错, 不应该立即响应.
+ * is intended solely to help find problems during development.                                       // 它仅仅打算用于帮助在开发的过程中发现问题
  *
- * <p>The EventBus guarantees that it will not call a subscriber method from multiple threads
+ * <p>The EventBus guarantees that it will not call a subscriber method from multiple threads         // 还是不翻译中文了,不然还是太依赖中文,要多理解注释的意思.英文的注释有时候更准确!
  * simultaneously, unless the method explicitly allows it by bearing the
  * {@link AllowConcurrentEvents} annotation. If this annotation is not present, subscriber methods
  * need not worry about being reentrant, unless also called from outside the EventBus.
@@ -83,7 +84,7 @@ import java.util.logging.Logger;
  * extends {@link Object}, a subscriber registered to receive any Object will never receive a
  * DeadEvent.
  *
- * <p>This class is safe for concurrent use.
+ * <p>This class is safe for concurrent use.  // 这个类是并发安全的!
  *
  * <p>See the Guava User Guide article on
  * <a href="https://github.com/google/guava/wiki/EventBusExplained">{@code EventBus}</a>.
@@ -100,7 +101,7 @@ public class EventBus {
   private final Executor executor;
   private final SubscriberExceptionHandler exceptionHandler;
 
-  private final SubscriberRegistry subscribers = new SubscriberRegistry(this);
+  private final SubscriberRegistry subscribers = new SubscriberRegistry(this);  // SubscriberRegistry包装了this对象.
   private final Dispatcher dispatcher;
 
   /**
@@ -130,7 +131,7 @@ public class EventBus {
    * @param exceptionHandler Handler for subscriber exceptions.
    * @since 16.0
    */
-  public EventBus(SubscriberExceptionHandler exceptionHandler) {
+  public EventBus(SubscriberExceptionHandler exceptionHandler) {  // 就像线程池的Executors一样,不同的构造函数, 可以创建各种用途的EventBus.
     this(
         "default",
         MoreExecutors.directExecutor(),
@@ -138,7 +139,7 @@ public class EventBus {
         exceptionHandler);
   }
 
-  EventBus(
+  EventBus(   // 其他所有的构造函数, 都是调用这个包级私有的构造函数, 这种写法蛮好.
       String identifier,
       Executor executor,
       Dispatcher dispatcher,
@@ -146,7 +147,7 @@ public class EventBus {
     this.identifier = checkNotNull(identifier);
     this.executor = checkNotNull(executor);
     this.dispatcher = checkNotNull(dispatcher);
-    this.exceptionHandler = checkNotNull(exceptionHandler);
+    this.exceptionHandler = checkNotNull(exceptionHandler); // 上面如果不指定,都会产生一个默认的,所以都可以checkNotNull.
   }
 
   /**
@@ -161,7 +162,7 @@ public class EventBus {
   /**
    * Returns the default executor this event bus uses for dispatching events to subscribers.
    */
-  final Executor executor() {
+  final Executor executor() {   // 都是申明一个final方法,而不是直接把对象暴露出去,那样不安全.
     return executor;
   }
 
@@ -213,11 +214,11 @@ public class EventBus {
    */
   public void post(Object event) {
     Iterator<Subscriber> eventSubscribers = subscribers.getSubscribers(event);
-    if (eventSubscribers.hasNext()) {
+    if (eventSubscribers.hasNext()) { // dispatcher有多种策略,
       dispatcher.dispatch(event, eventSubscribers);
-    } else if (!(event instanceof DeadEvent)) {
+    } else if (!(event instanceof DeadEvent)) {       // 没有,就直接发送一个DeadEvent, DeadEvent是event的包装对象.
       // the event had no subscribers and was not itself a DeadEvent
-      post(new DeadEvent(this, event));
+      post(new DeadEvent(this, event));         // 这里是递归调用, 下次调用方法, 会再次判断有没有监听DeadEvent的
     }
   }
 
@@ -229,23 +230,23 @@ public class EventBus {
   /**
    * Simple logging handler for subscriber exceptions.
    */
-  static final class LoggingHandler implements SubscriberExceptionHandler {
+  static final class LoggingHandler implements SubscriberExceptionHandler {   // 对每个模块都抽象出接口来
     static final LoggingHandler INSTANCE = new LoggingHandler();
 
     @Override
     public void handleException(Throwable exception, SubscriberExceptionContext context) {
       Logger logger = logger(context);
-      if (logger.isLoggable(Level.SEVERE)) {
+      if (logger.isLoggable(Level.SEVERE)) {  // 这个是JDK的Level
         logger.log(Level.SEVERE, message(context), exception);
       }
     }
 
     private static Logger logger(SubscriberExceptionContext context) {
-      return Logger.getLogger(EventBus.class.getName() + "." + context.getEventBus().identifier());
+      return Logger.getLogger(EventBus.class.getName() + "." + context.getEventBus().identifier());   // 日志的工厂模式,为什么要用工厂? 可以方便替换内部实现
     }
 
-    private static String message(SubscriberExceptionContext context) {
-      Method method = context.getSubscriberMethod();
+    private static String message(SubscriberExceptionContext context) {   // logger方法 和 这个message方法, 都可以直接在handleException里写的
+      Method method = context.getSubscriberMethod();                      // 但是其实是独立的方法, 拆成私有方法, 会更清晰些.
       return "Exception thrown by subscriber method "
           + method.getName()
           + '('

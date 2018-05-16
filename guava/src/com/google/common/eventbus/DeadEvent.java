@@ -14,10 +14,10 @@
 
 package com.google.common.eventbus;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.google.common.annotations.Beta;
 import com.google.common.base.MoreObjects;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Wraps an event that was posted, but which had no subscribers and thus could not be delivered.
@@ -29,10 +29,10 @@ import com.google.common.base.MoreObjects;
  * @since 10.0
  */
 @Beta
-public class DeadEvent {
+public class DeadEvent {      // 很多时候,我们想做一种标记,都是在Event对象中放一个字段表示无效的,这里是用一个包装对象
 
   private final Object source;
-  private final Object event;
+  private final Object event; // 这种用法值得借鉴
 
   /**
    * Creates a new DeadEvent.

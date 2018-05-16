@@ -14,9 +14,6 @@
 
 package com.google.common.eventbus;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
@@ -24,26 +21,19 @@ import com.google.common.base.Throwables;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterators;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimap;
+import com.google.common.collect.*;
 import com.google.common.reflect.TypeToken;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.j2objc.annotations.Weak;
+
+import javax.annotation.Nullable;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArraySet;
-import javax.annotation.Nullable;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Registry of subscribers to a single event bus.
@@ -58,7 +48,7 @@ final class SubscriberRegistry {
    * <p>The {@link CopyOnWriteArraySet} values make it easy and relatively lightweight to get an
    * immutable snapshot of all current subscribers to an event without any locking.
    */
-  private final ConcurrentMap<Class<?>, CopyOnWriteArraySet<Subscriber>> subscribers =
+  private final ConcurrentMap<Class<?>, CopyOnWriteArraySet<Subscriber>> subscribers =  // CopyOnWriteArraySet 比较适合这种注册和通知机制. 也就是读远远大于写的情况.
       Maps.newConcurrentMap();
 
   /**
@@ -76,20 +66,20 @@ final class SubscriberRegistry {
   void register(Object listener) {
     Multimap<Class<?>, Subscriber> listenerMethods = findAllSubscribers(listener);
 
-    for (Map.Entry<Class<?>, Collection<Subscriber>> entry : listenerMethods.asMap().entrySet()) {
+    for (Map.Entry<Class<?>, Collection<Subscriber>> entry : listenerMethods.asMap().entrySet()) {  // 遍历
       Class<?> eventType = entry.getKey();
-      Collection<Subscriber> eventMethodsInListener = entry.getValue();
+      Collection<Subscriber> eventMethodsInListener = entry.getValue();             // class中标记了Subscriber注解的方法
 
-      CopyOnWriteArraySet<Subscriber> eventSubscribers = subscribers.get(eventType);
+      CopyOnWriteArraySet<Subscriber> eventSubscribers = subscribers.get(eventType);  // 已经注册的监听器
 
       if (eventSubscribers == null) {
         CopyOnWriteArraySet<Subscriber> newSet = new CopyOnWriteArraySet<Subscriber>();
         eventSubscribers =
-            MoreObjects.firstNonNull(subscribers.putIfAbsent(eventType, newSet), newSet);
+            MoreObjects.firstNonNull(subscribers.putIfAbsent(eventType, newSet), newSet); // 如果放入成功,则返回newSet; 放入失败,表示别的线程初始化了,返回已存在的.
       }
 
-      eventSubscribers.addAll(eventMethodsInListener);
-    }
+      eventSubscribers.addAll(eventMethodsInListener);  // CopyOnWriteArraySet的addAll方法是线程安全的.
+    }                                                   // CopyOnWriteArraySet好处就是写的时候,不影响读,写操作是加了锁的. 写操作是不能并发的, 写和读可以并发.
   }
 
   /**
@@ -103,13 +93,13 @@ final class SubscriberRegistry {
       Collection<Subscriber> listenerMethodsForType = entry.getValue();
 
       CopyOnWriteArraySet<Subscriber> currentSubscribers = subscribers.get(eventType);
-      if (currentSubscribers == null || !currentSubscribers.removeAll(listenerMethodsForType)) {
+      if (currentSubscribers == null || !currentSubscribers.removeAll(listenerMethodsForType)) {  //CopyOnWriteArraySet的删除方法removeAll也是安全的.
         // if removeAll returns true, all we really know is that at least one subscriber was
         // removed... however, barring something very strange we can assume that if at least one
         // subscriber was removed, all subscribers on listener for that event type were... after
         // all, the definition of subscribers on a particular class is totally static
         throw new IllegalArgumentException(
-            "missing event subscriber for an annotated method. Is " + listener + " registered?");
+            "missing event subscriber for an annotated method. Is " + listener + " registered?"); // 不存在就不允许调用remove方法,因为CopyOnWriteArraySet的删除操作会有锁.
       }
 
       // don't try to remove the set if it's empty; that can't be done safely without a lock
@@ -117,7 +107,7 @@ final class SubscriberRegistry {
     }
   }
 
-  @VisibleForTesting
+  @VisibleForTesting  // google工程师, 真的很注重细节, 代码开发时, 注重可测试性, 可测试的代码才是安全的健壮的代码.
   Set<Subscriber> getSubscribersForTesting(Class<?> eventType) {
     return MoreObjects.firstNonNull(subscribers.get(eventType), ImmutableSet.<Subscriber>of());
   }
@@ -126,34 +116,34 @@ final class SubscriberRegistry {
    * Gets an iterator representing an immutable snapshot of all subscribers to the given event at
    * the time this method is called.
    */
-  Iterator<Subscriber> getSubscribers(Object event) {
+  Iterator<Subscriber> getSubscribers(Object event) {   // 根据event获取当时的一个迭代器
     ImmutableSet<Class<?>> eventTypes = flattenHierarchy(event.getClass());
 
     List<Iterator<Subscriber>> subscriberIterators =
         Lists.newArrayListWithCapacity(eventTypes.size());
 
     for (Class<?> eventType : eventTypes) {
-      CopyOnWriteArraySet<Subscriber> eventSubscribers = subscribers.get(eventType);
+      CopyOnWriteArraySet<Subscriber> eventSubscribers = subscribers.get(eventType);  // 监听器List
       if (eventSubscribers != null) {
         // eager no-copy snapshot
         subscriberIterators.add(eventSubscribers.iterator());
       }
     }
 
-    return Iterators.concat(subscriberIterators.iterator());
+    return Iterators.concat(subscriberIterators.iterator());  // 迭代器连在一起
   }
 
   /**
-   * A thread-safe cache that contains the mapping from each class to all methods in that class and
+   * A thread-safe cache that contains the mapping from each class to all methods in that class and   // class和对应的所有方法 (标记了Subscribe的方法)
    * all super-classes, that are annotated with {@code @Subscribe}. The cache is shared across all
-   * instances of this class; this greatly improves performance if multiple EventBus instances are
-   * created and objects of the same class are registered on all of them.
+   * instances of this class; this greatly improves performance if multiple EventBus instances are    // 如果创建了多个EventBus实例
+   * created and objects of the same class are registered on all of them.                             // 同一个class的对象被注册到他们所有上面
    */
   private static final LoadingCache<Class<?>, ImmutableList<Method>> subscriberMethodsCache =
       CacheBuilder.newBuilder()
-          .weakKeys()
+          .weakKeys() // 这里对class不是强引用,class是可以被gc从永久代卸载的.
           .build(
-              new CacheLoader<Class<?>, ImmutableList<Method>>() {
+              new CacheLoader<Class<?>, ImmutableList<Method>>() {  // guava cache内部是怎么保证不同key获取和加载时的线程安全的?
                 @Override
                 public ImmutableList<Method> load(Class<?> concreteClass) throws Exception {
                   return getAnnotatedMethodsNotCached(concreteClass);
@@ -164,24 +154,24 @@ final class SubscriberRegistry {
    * Returns all subscribers for the given listener grouped by the type of event they subscribe to.
    */
   private Multimap<Class<?>, Subscriber> findAllSubscribers(Object listener) {
-    Multimap<Class<?>, Subscriber> methodsInListener = HashMultimap.create();
+    Multimap<Class<?>, Subscriber> methodsInListener = HashMultimap.create();   //Multimap 是一对多的map数据结构, 一个class可以对应多个Subscriber
     Class<?> clazz = listener.getClass();
     for (Method method : getAnnotatedMethods(clazz)) {
       Class<?>[] parameterTypes = method.getParameterTypes();
       Class<?> eventType = parameterTypes[0];
-      methodsInListener.put(eventType, Subscriber.create(bus, listener, method));
+      methodsInListener.put(eventType, Subscriber.create(bus, listener, method)); // 一个class可以对应多个Subscriber, eventType是key
     }
     return methodsInListener;
   }
 
   private static ImmutableList<Method> getAnnotatedMethods(Class<?> clazz) {
-    return subscriberMethodsCache.getUnchecked(clazz);
+    return subscriberMethodsCache.getUnchecked(clazz);  // 从class中获取方法list
   }
 
   private static ImmutableList<Method> getAnnotatedMethodsNotCached(Class<?> clazz) {
-    Set<? extends Class<?>> supertypes = TypeToken.of(clazz).getTypes().rawTypes();
+    Set<? extends Class<?>> supertypes = TypeToken.of(clazz).getTypes().rawTypes(); // 找出clazz所有的父类,抽象类和接口,包括class本身
     Map<MethodIdentifier, Method> identifiers = Maps.newHashMap();
-    for (Class<?> supertype : supertypes) {
+    for (Class<?> supertype : supertypes) {                 // 也就是扫描class本身和的所有父类的方法,看有没有标记Subscribe注解的方法
       for (Method method : supertype.getDeclaredMethods()) {
         if (method.isAnnotationPresent(Subscribe.class) && !method.isSynthetic()) {
           // TODO(cgdecker): Should check for a generic parameter type and error out
@@ -200,14 +190,14 @@ final class SubscriberRegistry {
         }
       }
     }
-    return ImmutableList.copyOf(identifiers.values());
+    return ImmutableList.copyOf(identifiers.values());  // 返回的是所有方法的List
   }
 
   /**
    * Global cache of classes to their flattened hierarchy of supertypes.
    */
-  private static final LoadingCache<Class<?>, ImmutableSet<Class<?>>> flattenHierarchyCache =
-      CacheBuilder.newBuilder()
+  private static final LoadingCache<Class<?>, ImmutableSet<Class<?>>> flattenHierarchyCache =   // 这里也是用了一个缓存
+      CacheBuilder.newBuilder()     // guava的这个LoadingCache, 可以用来做我们经常用到的, 对某个操作结果做缓存的操作.
           .weakKeys()
           .build(
               new CacheLoader<Class<?>, ImmutableSet<Class<?>>>() {
@@ -216,7 +206,7 @@ final class SubscriberRegistry {
                 @Override
                 public ImmutableSet<Class<?>> load(Class<?> concreteClass) {
                   return ImmutableSet.<Class<?>>copyOf(
-                      TypeToken.of(concreteClass).getTypes().rawTypes());
+                      TypeToken.of(concreteClass).getTypes().rawTypes()); // 找到所有的父类,并缓存
                 }
               });
 

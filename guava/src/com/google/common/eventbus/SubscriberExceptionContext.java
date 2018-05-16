@@ -13,16 +13,16 @@
  */
 package com.google.common.eventbus;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import java.lang.reflect.Method;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Context for an exception thrown by a subscriber.
  *
  * @since 16.0
  */
-public class SubscriberExceptionContext {
+public class SubscriberExceptionContext {   // 就是个用来传值的媒介对象,避免传多个参数
   private final EventBus eventBus;
   private final Object event;
   private final Object subscriber;

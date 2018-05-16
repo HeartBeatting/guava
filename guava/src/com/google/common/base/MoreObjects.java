@@ -14,12 +14,13 @@
 
 package com.google.common.base;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import com.google.common.annotations.GwtCompatible;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import java.util.Arrays;
+
 import javax.annotation.Nullable;
+import java.util.Arrays;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Helper functions that operate on any {@code Object}, and are not already provided in
@@ -344,7 +345,7 @@ public final class MoreObjects {
           }
           if (value != null && value.getClass().isArray()) {
             Object[] objectArray = {value};
-            String arrayString = Arrays.deepToString(objectArray);
+            String arrayString = Arrays.deepToString(objectArray);  // 看的出来jdk所有代码都看过了, 像guava这种工具包, 经过了大量的测试, 怎么写出易于测试的包, 还是很重要的.
             builder.append(arrayString, 1, arrayString.length() - 1);
           } else {
             builder.append(value);
